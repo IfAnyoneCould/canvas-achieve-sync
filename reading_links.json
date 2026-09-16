@@ -1,0 +1,79 @@
+{
+  "_comment": [
+    "Reading links for calendar-sourced tasks. Two origins:",
+    "  - the PHIL 2390 'Cults (Fall 2026)' syllabus, pages 16-21 (public URLs)",
+    "  - the course's Canvas Files tab (the scanned chapters and articles)",
+    "Each key is a case-insensitive regex matched against the calendar event",
+    "title; the value is one URL or a list. The first becomes the task's link and",
+    "the rest are listed under it, so an event that pairs a podcast with a chapter",
+    "gets the podcast first and the PDF second.",
+    "Keys must be specific enough to hit one event: 'Jonestown' alone would also",
+    "catch the Chidester reading, and 'Let the Fire Burn' matches both the film",
+    "and the PBS follow-up page.",
+    "Canvas file links are permanent but need an NEU login."
+  ],
+
+  "Snakes Alive": "https://northeastern.instructure.com/courses/266503/files/43322017",
+  "Cambridge History": "https://northeastern.instructure.com/courses/266503/files/43322014",
+  "Talking about Religious Outsiders": [
+    "https://northeastern.instructure.com/courses/266503/files/43322006",
+    "https://northeastern.instructure.com/courses/266503/files/43322015"
+  ],
+  "Starrs": "https://northeastern.instructure.com/courses/266503/files/43322011",
+
+  "Elizabeth Clare Prophet": [
+    "https://www.buzzsprout.com/1064365/episodes/8740533-elizabeth-clare-prophet-religious-leader-a-conversation-with-erin-prophet",
+    "https://northeastern.instructure.com/courses/266503/files/43322025"
+  ],
+  "Prophet Who Failed": "https://northeastern.instructure.com/courses/266503/files/43322013",
+  "Oneida": [
+    "https://www.bbc.com/reel/playlist/hidden-histories?vpid=p08sfn33",
+    "https://northeastern.instructure.com/courses/266503/files/43343648"
+  ],
+  "Kinship": [
+    "https://politicaltheology.com/kinship/",
+    "https://northeastern.instructure.com/courses/266503/files/43322019",
+    "https://northeastern.instructure.com/courses/266503/files/43322039"
+  ],
+  "Blessed Child": "https://www.kanopy.com/en/product/blessed-child?vp=northeastern",
+  "Short Creek E1": [
+    "https://podcasts.apple.com/us/podcast/unfinished/id1516705248?i=1000491154101",
+    "https://northeastern.instructure.com/courses/266503/files/43343655"
+  ],
+  "Short Creek E4": [
+    "https://podcasts.apple.com/us/podcast/unfinished/id1516705248?i=1000492759472",
+    "https://open.spotify.com/episode/4vDsYNXVWCqwkkAlaw2IKo?si=QysSqQWxT2ihjihOOZMa9g"
+  ],
+  "Pratezina": "https://northeastern.instructure.com/courses/266503/files/43343662",
+
+  "Wound Worship": "https://megaphone.link/ADL7052201949",
+  "Peucker": "https://northeastern.instructure.com/courses/266503/files/43322044",
+  "Hail, Satan": "https://digitalcampus-swankmp-net.ezproxy.neu.edu/northeastern332831/play/3899cb3eaee1641b",
+  "Laycock": [
+    "https://northeastern.instructure.com/courses/266503/files/43322047",
+    "https://northeastern.instructure.com/courses/266503/files/43322007"
+  ],
+
+  "Urban": "https://northeastern.instructure.com/courses/266503/files/43343912",
+  "Lewis": "https://northeastern.instructure.com/courses/266503/files/43343918",
+  "My Scientology Movie": "https://www.kanopy.com/en/northeastern/video/10605089",
+
+  "Jonestown: The Life and Death": [
+    "https://www.kanopy.com/en/northeastern/video/617301",
+    "https://jonestown.sdsu.edu/?page_id=29081"
+  ],
+  "Chidester": "https://northeastern.instructure.com/courses/266503/files/43322023",
+  "Crockford": "https://northeastern.instructure.com/courses/266503/files/43322034",
+
+  "Deaths in the Fire": "https://northeastern.instructure.com/courses/266503/files/43322035",
+  "Waco: The Siege": [
+    "https://theconversation.com/waco-the-siege-25-years-on-94324",
+    "https://northeastern.instructure.com/courses/266503/files/43322059"
+  ],
+  "Watch: Let the Fire Burn": "https://www.kanopy.com/en/product/5322082?vp=northeastern&frontend=kui",
+  "Evans": [
+    "https://northeastern.instructure.com/courses/266503/files/43322062",
+    "https://northeastern.instructure.com/courses/266503/files/43322063"
+  ],
+  "Independent Lens": "https://www.pbs.org/independentlens/blog/let-fire-burn-fallout-29-years/"
+}

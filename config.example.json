@@ -1,0 +1,30 @@
+{
+  "timezone": "America/New_York",
+  "window": {
+    "past_days": 3,
+    "future_days": 120
+  },
+  "canvas": {
+    "enabled": true,
+    "base_url": "https://northeastern.instructure.com",
+    "token": "PASTE_YOUR_CANVAS_ACCESS_TOKEN_HERE",
+    "skip_courses": [],
+    "include_undated": false,
+    "course_names": {
+      "Up2Us Foundations": "Up2Us"
+    }
+  },
+  "achieve": {
+    "enabled": false,
+    "base_url": "https://achieve.macmillanlearning.com",
+    "email": "",
+    "headless": true,
+    "debug_dump": true
+  },
+  "google_tasks": {
+    "enabled": true,
+    "list_name": "Coursework",
+    "title_format": "[{course}] {title}",
+    "delete_disappeared": true
+  }
+}
