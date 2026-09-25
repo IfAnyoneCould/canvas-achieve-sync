@@ -1,12 +1,11 @@
 """Colour the NEU calendar by class, so a week reads at a glance.
 
 Everything on that calendar arrives in the calendar's one default colour. This
-sets each event's own colorId from `courses` in config: a colour per class, a
-distinct one for office hours, and grey for things belonging to no class
-(add/drop deadlines, the department showcase).
+sets each event's own colorId from `courses` in config: a colour per class and
+a distinct one for office hours. Things belonging to no class are left alone.
 
-Only events whose colour is actually wrong are touched, so the first run
-recolours the term and every run after it is a no-op. Patches go out in batches
+Only events still in the calendar's default colour are touched, so a colour
+picked by hand is never overwritten. Patches go out in batches
 because a term is a few hundred events and one request each is slow enough to
 run into rate limits.
 """
@@ -85,6 +84,13 @@ def _patch_colors(
     return done, remaining
 
 
+def wanted_color(ev: dict, courses: dict) -> str | None:
+    # anything already coloured, by this or by hand, is left alone
+    if ev.get("colorId"):
+        return None
+    return courses_mod.color((ev.get("summary") or "").strip(), courses)
+
+
 def _calendars(svc, wanted: list[str], log: logging.Logger) -> list[dict]:
     page = None
     all_cals: list[dict] = []
@@ -158,8 +164,8 @@ def apply_colors(cfg: dict, log: logging.Logger, interactive: bool = False) -> d
             if not title:
                 continue
             stats["checked"] += 1
-            want = courses_mod.color(title, courses)
-            if want and ev.get("colorId") != want:
+            want = wanted_color(ev, courses)
+            if want:
                 pending.append((ev["id"], want))
 
         done, failed = _patch_colors(svc, cal["id"], pending, log)

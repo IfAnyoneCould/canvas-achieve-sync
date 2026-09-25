@@ -344,6 +344,19 @@ check("markers come from the same decision as colours",
 check("comment keys are not treated as classes",
       "_comment" not in cm.load({"courses": {"_comment": "hi", "X": {"marker": "x"}}}))
 
+# the colourer only fills in events still in the calendar default
+from colorize import wanted_color
+
+check("an uncoloured class event gets its class colour",
+      wanted_color({"summary": "CHEM 1151 HW 3 due"}, COURSES) == "11")
+check("a hand-picked colour on a class event is kept",
+      wanted_color({"summary": "GE1501 minigolf group", "colorId": "2"}, COURSES) is None)
+check("a hand-picked colour on a non-class event is kept",
+      wanted_color({"summary": "Rev Kick Off", "colorId": "4"}, COURSES) is None)
+check("a default with no calendar colour leaves non-class events alone",
+      wanted_color({"summary": "Rev Kick Off"},
+                   {**COURSES, "_default": {"marker": "W"}}) is None)
+
 # the marker reaches the task title, and is absent when no classes are configured
 tz_ny = ZoneInfo("America/New_York")
 it = item("canvas:m1", "HW 5", 3, course="MATH 2321")
@@ -394,6 +407,8 @@ if _cfg_path.exists():
     check(f"closest pair of colours is {worst[0]:.0f} degrees apart ({worst[1]}/{worst[2]})",
           worst[0] >= 40, worst)
     check("green is in use", "10" in used.values(), used)
+    check("events belonging to no class are never greyed",
+          "_default" not in used, used)
 
 print("\n" + ("ALL PASS" if not fails else f"{len(fails)} FAILED: {fails}"))
 sys.exit(1 if fails else 0)

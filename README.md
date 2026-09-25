@@ -332,7 +332,7 @@ disagree:
 | GE 1501 (incl. "Cornerstone …") | Basil, `10` | 116° | 🟩 |
 | MATH 2321 | Blueberry, `9` | 221° | 🟦 |
 | PHIL 2390 | Grape, `3` | 274° | 🟪 |
-| anything else | Graphite, `8` | — | ⬜ |
+| anything else | left alone | — | ⬜ |
 
 These are picked for **hue separation, not taste**: the closest pair is 48°
 apart. Two of Google's eleven are deliberately unused — **Tangerine** (28°)
@@ -346,8 +346,8 @@ first: "Dr. R-S Office Hours" would otherwise be claimed by PHIL, since Dr. R-S
 teaches it. Office hours are a category of their own and produce no tasks.
 
 `colorize.py` runs at the end of every sync and sets each event's `colorId`,
-touching only the ones that are wrong — so the first run recolours the term and
-every run after is a no-op. It lists with `singleEvents=False`, colouring a
+touching only the ones still in the calendar's default colour, so a colour
+picked by hand is never overwritten. It lists with `singleEvents=False`, colouring a
 recurring series once instead of 35 identical instances.
 
 Calendar **rate-limits writes per user**, and a batch is sent all at once: 50
