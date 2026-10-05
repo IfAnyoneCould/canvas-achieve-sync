@@ -99,6 +99,21 @@ check("vanished live task deleted", "t9" not in store, list(store))
 check("completed task kept as record", t2id in store, list(store))
 check("state pruned", "canvas:9" not in state["google_tasks"], state["google_tasks"].keys())
 
+# 6b. ticked task drops out for a run (source offline) then comes back => no duplicate
+s = gt.sync([item("canvas:1", "HW 5", 10, done=True), item("canvas:2", "Quiz 2", 5)], CFG, state, log)
+quiz = [t for t in store.values() if t["title"] == "[CS 3500] Quiz 2"]
+check("returning ticked task not duplicated", len(quiz) == 1, [(t["id"], t["status"]) for t in quiz])
+check("returning ticked task stays ticked", all(t["status"] == "completed" for t in quiz),
+      [(t["id"], t["status"]) for t in quiz])
+
+# 6c. source failed this run => its live tasks are left alone
+store["t8"] = {"id": "t8", "title": "[CS 3500] Live HW", "status": "needsAction"}
+state["google_tasks"]["canvas:8"] = {"task_id": "t8", "fingerprint": "x"}
+s = gt.sync([], CFG, state, log, skip_sources={"canvas"})
+check("failed source not pruned", "t8" in store and "canvas:8" in state["google_tasks"], s)
+s = gt.sync([], CFG, state, log)
+check("pruned once source is back", "t8" not in store, list(store))
+
 # 7. achieve payload mapping (real /api/v1/courses/{id}/assignments schema)
 LO = datetime(2026, 9, 11, tzinfo=timezone.utc)
 HI = datetime(2027, 1, 12, tzinfo=timezone.utc)

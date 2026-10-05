@@ -108,6 +108,7 @@ def sync(
     logger: logging.Logger,
     interactive: bool = False,
     dry_run: bool = False,
+    skip_sources: set[str] | frozenset[str] = frozenset(),
 ) -> dict[str, int]:
     gcfg = cfg.get("google_tasks", {})
     tz = ZoneInfo(cfg.get("timezone", "America/New_York"))
@@ -172,11 +173,19 @@ def sync(
 
     if gcfg.get("delete_disappeared", True):
         for uid in [u for u in mapping if u not in seen]:
+            # A source that failed this run returned nothing, which isn't the
+            # same as its assignments being gone.
+            if uid.split(":", 1)[0] in skip_sources:
+                continue
             rec = mapping[uid]
             task = existing.get(rec["task_id"])
             # Leave finished work in place as a record; only prune live tasks
             # whose source assignment is gone (deleted or aged out of the window).
-            if task and task.get("status") != "completed":
+            # Finished ones keep their mapping too, or the assignment coming
+            # back would get a fresh unticked copy.
+            if task and task.get("status") == "completed":
+                continue
+            if task:
                 if dry_run:
                     logger.info("[dry-run] delete %s", task.get("title"))
                 else:
@@ -184,6 +193,7 @@ def sync(
                         svc.tasks().delete(tasklist=list_id, task=task["id"]).execute()
                     except HttpError as e:
                         logger.warning("could not delete %s: %s", task.get("title"), e)
+                        continue
                 stats["removed"] += 1
             if not dry_run:
                 mapping.pop(uid, None)

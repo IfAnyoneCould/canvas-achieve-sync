@@ -20,9 +20,11 @@ from targets import google_tasks
 
 def collect(
     cfg: dict, log, state: dict | None = None, interactive: bool = False
-) -> tuple[list[Item], list[str]]:
+) -> tuple[list[Item], list[str], set[str]]:
     items: list[Item] = []
     problems: list[str] = []
+    # uid prefixes of sources that failed, so their tasks aren't pruned as gone
+    failed: set[str] = set()
     state = {} if state is None else state
 
     if cfg.get("canvas", {}).get("enabled", True):
@@ -32,6 +34,7 @@ def collect(
             raise
         except Exception as e:  # noqa: BLE001 - one bad source shouldn't kill the run
             problems.append(f"canvas: {e}")
+            failed.add("canvas")
             log.error("Canvas source failed: %s", e)
 
     if cfg.get("google_calendar", {}).get("enabled", False):
@@ -43,6 +46,7 @@ def collect(
             raise
         except Exception as e:  # noqa: BLE001
             problems.append(f"calendar: {e}")
+            failed.add("gcal")
             log.error("Calendar source failed: %s", e)
 
     if cfg.get("math_homework", {}).get("enabled", False):
@@ -54,6 +58,7 @@ def collect(
             raise
         except Exception as e:  # noqa: BLE001
             problems.append(f"math homework: {e}")
+            failed.add("mathhw")
             log.error("Math homework source failed: %s", e)
 
     if cfg.get("achieve", {}).get("enabled", False):
@@ -63,12 +68,14 @@ def collect(
             items += achieve_src.fetch(cfg, log)
         except achieve_src.AchieveNeedsLogin as e:
             problems.append(f"achieve: {e}")
+            failed.add("achieve")
             log.warning("Achieve needs a fresh login: %s", e)
         except Exception as e:  # noqa: BLE001
             problems.append(f"achieve: {e}")
+            failed.add("achieve")
             log.error("Achieve source failed: %s", e)
 
-    return items, problems
+    return items, problems, failed
 
 
 def main() -> int:
@@ -94,7 +101,7 @@ def main() -> int:
     cfg = load_config()
     state = load_state()
 
-    items, problems = collect(cfg, log, state, interactive=args.login)
+    items, problems, failed = collect(cfg, log, state, interactive=args.login)
 
     # Deduplicate: the same assignment can surface from more than one source
     # when a course pipes Achieve deadlines into Canvas, or when a calendar
@@ -138,7 +145,8 @@ def main() -> int:
 
     if cfg.get("google_tasks", {}).get("enabled", True):
         stats = google_tasks.sync(
-            deduped, cfg, state, log, interactive=args.login, dry_run=args.dry_run
+            deduped, cfg, state, log, interactive=args.login, dry_run=args.dry_run,
+            skip_sources=failed,
         )
         log.info(
             "Google Tasks: %d created, %d updated, %d completed, %d removed, %d unchanged",
