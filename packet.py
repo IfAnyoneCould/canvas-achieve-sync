@@ -440,10 +440,16 @@ def build_packet(
         sections = _section_pages(book)
         w = _Writer(out)
 
+        if not spec.problem_count:
+            contents = "the professor's problems only"
+        elif spec.extra_page is None:
+            contents = f"{spec.problem_count} textbook problems"
+        else:
+            contents = f"{spec.problem_count} textbook problems + the professor's own"
+
         w.text(f"{course} — {spec.title}", size=17, gap=4)
         w.text(
-            f"Problem packet · built {date.today():%b %d, %Y} · "
-            f"{spec.problem_count} textbook problems + the professor's own",
+            f"Problem packet · built {date.today():%b %d, %Y} · {contents}",
             size=8,
             gap=14,
             bold=False,
