@@ -5,6 +5,7 @@ debug/
 config.json
 credentials.json
 token.json
+token.json.bak
 state.json
 sync.log
 packets/
