@@ -40,7 +40,11 @@ PAGE_W, PAGE_H = 612.0, 792.0
 MARGIN = 54.0
 FOOT = 40.0
 
-_SECTION_PROBLEMS = re.compile(r"[§S]?\s*(\d+\.\d+)\s*#\s*([0-9,\s–—-]+)")
+# He words it differently every week ("# 41", ", problem 17", "Exercises 1-12",
+# "Book exercises: 7, 8") so the words are ignored entirely: a § followed by
+# the first run of numbers after it. "sections 1.4-1.6" has no § so it is skipped
+_SECTION_REF = re.compile(r"(?:§|\bS(?=\s*\d+\.\d)|\bsection\s+)\s*(\d+\.\d+)", re.I)
+_NUMBER_LIST = re.compile(r"(?<![\d.])\d+(?!\.?\d)(?:\s*(?:[,–—-]|\band\b)\s*\d+(?!\.?\d))*", re.I)
 _RANGE = re.compile(r"(\d+)\s*[-–—]\s*(\d+)")
 _NUMBER_TOKEN = re.compile(r"^(\d+)\.$")
 _HW_NUMBER = re.compile(r"homework\s*#?\s*(\d+)", re.I)
@@ -56,6 +60,7 @@ class HomeworkSpec:
     book: dict[str, list[int]] = field(default_factory=dict)  # "1.2" -> [41, 42, 43]
     extra_page: int | None = None  # page where "Additional problems" starts
     extra_y: float | None = None  # and how far down it starts
+    notes: dict[tuple[str, int], str] = field(default_factory=dict)  # ("2.5", 21) -> "do only parts (a) through (d)"
 
     @property
     def problem_count(self) -> int:
@@ -81,6 +86,69 @@ def _expand(spec: str) -> list[int]:
     return [n for n in out if not (n in seen or seen.add(n))]
 
 
+def _pull_notes(text: str) -> tuple[str, list[str]]:
+    """Take the outermost (...) out of text, nested ones included."""
+    out, notes, depth, start = [], [], 0, 0
+    for i, ch in enumerate(text):
+        if ch == "(":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == ")" and depth:
+            depth -= 1
+            if depth == 0:
+                notes.append(text[start + 1 : i].strip())
+                out.append(" ")
+            continue
+        if depth == 0:
+            out.append(ch)
+    return "".join(out), notes
+
+
+def _section_refs(text: str) -> list[tuple[str, list[int], str]]:
+    """Every (section, problems, note) the sheet asks for, in the order written."""
+    lines = text.splitlines()
+    refs = []
+    for idx, line in enumerate(lines):
+        hits = list(_SECTION_REF.finditer(line))
+        for j, m in enumerate(hits):
+            tail = line[m.end() : hits[j + 1].start() if j + 1 < len(hits) else len(line)]
+            # a list that wraps carries on to the next line
+            k = idx + 1
+            while j + 1 == len(hits) and tail.rstrip().endswith((",", "-", "–")) and k < len(lines):
+                tail += " " + lines[k]
+                k += 1
+            tail, notes = _pull_notes(tail)
+            nums = _NUMBER_LIST.search(tail)
+            if not nums:
+                continue
+            found = _expand(re.sub(r"\band\b", ",", nums.group(0), flags=re.I))
+            note = next((n for n in notes if len(re.findall(r"[a-z]", n, re.I)) > 3), "")
+            if found:
+                refs.append((m.group(1), found, note))
+    return refs
+
+
+def _extras_start(doc: pymupdf.Document) -> tuple[int | None, float | None]:
+    """Where his own problems begin, so the packet can carry them over.
+
+    Normally an "Additional problems" heading. Homework 2 has no heading and no
+    book-problem list either - the sheet opens straight into "(1)" - so fall
+    back to the first problem he numbered himself.
+    """
+    for pno, page in enumerate(doc):
+        hits = page.search_for("Additional problems")
+        if hits:
+            # Start just below his own heading: the packet prints its own.
+            return pno, hits[0].y1 + 1
+
+    for pno, page in enumerate(doc):
+        for w in page.get_text("words"):
+            if w[4] == "(1)":
+                return pno, w[1] - 1
+    return None, None
+
+
 def parse_homework(pdf_path: str | Path, logger: logging.Logger) -> HomeworkSpec:
     """Read one homework sheet: which book problems, and where the extras start."""
     doc = pymupdf.open(pdf_path)
@@ -99,19 +167,17 @@ def parse_homework(pdf_path: str | Path, logger: logging.Logger) -> HomeworkSpec
             head = full[: cut.start()]
 
         book: dict[str, list[int]] = {}
-        for sec, nums in _SECTION_PROBLEMS.findall(head):
-            found = _expand(nums)
-            if found:
-                book.setdefault(sec, [])
-                book[sec].extend(n for n in found if n not in book[sec])
+        notes: dict[tuple[str, int], str] = {}
+        for sec, found, note in _section_refs(head):
+            book.setdefault(sec, [])
+            book[sec].extend(n for n in found if n not in book[sec])
+            if note:
+                notes.update({(sec, n): note for n in found})
 
-        extra_page = extra_y = None
-        for pno, page in enumerate(doc):
-            hits = page.search_for("Additional problems")
-            if hits:
-                # Start just below his own heading: the packet prints its own.
-                extra_page, extra_y = pno, hits[0].y1 + 1
-                break
+        if not book and _SECTION_REF.search(head):
+            logger.warning("%s: mentions a § but no problem numbers were read off it", title)
+
+        extra_page, extra_y = _extras_start(doc)
 
         logger.info(
             "%s: %d book problem(s) across %d section(s)%s",
@@ -120,7 +186,7 @@ def parse_homework(pdf_path: str | Path, logger: logging.Logger) -> HomeworkSpec
             len(book),
             "" if extra_page is None else ", plus additional problems",
         )
-        return HomeworkSpec(number, title, book, extra_page, extra_y)
+        return HomeworkSpec(number, title, book, extra_page, extra_y, notes)
     finally:
         doc.close()
 
@@ -420,9 +486,16 @@ def build_packet(
             if active is not None:
                 problems[active] = current
 
+            starts = [ln for ln in lines if ln.kind in ("number", "instruction")]
+            next_top: dict[int, tuple[int, float]] = {}
+            for a, b in zip(starts, starts[1:]):
+                if a.kind == "number" and a.number is not None:
+                    next_top[a.number] = (b.page, b.y0)
+
             w.text(f"§{sec}", size=13, gap=8)
 
             last_heading: list[_Line] | None = None
+            last_note = ""
             for n in wanted:
                 lns = problems.get(n)
                 if not lns:
@@ -436,7 +509,17 @@ def build_packet(
                         w.clip(book, page, top, bot, cx0, cx1)
                     last_heading = intro
 
+                note = spec.notes.get((sec, n), "")
+                if note and note != last_note:
+                    w.text(f"Professor: {note}", size=9, gap=6, bold=False)
+                last_note = note
+
+                # a tall glyph (a radical) can reach past the next problem's top,
+                # so stop there or the next one gets drawn twice
+                nxt = next_top.get(n)
                 for page, top, bot, cx0, cx1 in _runs(lns):
+                    if nxt and nxt[0] == page:
+                        bot = min(bot, nxt[1] - PAD)
                     w.clip(book, page, top, bot, cx0, cx1)
                 included += 1
 

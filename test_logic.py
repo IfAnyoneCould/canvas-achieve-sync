@@ -284,6 +284,76 @@ with tempfile.TemporaryDirectory() as tmp:
     check("a number inside the extras is not read as a book problem",
           7 not in spec.book.get("2.3", []), spec.book)
 
+    # Homework 2 is a different shape: no "Book problems" list and no
+    # "Additional problems" heading - his own problems start straight away and
+    # the book references sit among them as "§1.6, problem 17".
+    fake2 = Path(tmp) / "Homework 2.pdf"
+    d = pymupdf.open()
+    page = d.new_page()
+    for i, line in enumerate([
+        "Math 2321: Calculus 3, Fall 2026",
+        "Homework 2",
+        "Instructions:",
+        "The reference for this material comes from sections 1.4-1.6 of the book.",
+        "(1) Compute the cross product.",
+        "(2) Find the area of the triangle.",
+        "(13) §1.6, problem 17",
+        "(14) §1.6, problem 18",
+    ]):
+        page.insert_text((72, 100 + i * 20), line)
+    d.save(fake2)
+    d.close()
+
+    spec = pk.parse_homework(fake2, log)
+    check("book problems are found without a 'Book problems' list",
+          spec.book == {"1.6": [17, 18]}, spec.book)
+    check("the section range in the instructions is not read as problems",
+          "1.4" not in spec.book, spec.book)
+    check("extras are located without an 'Additional problems' heading",
+          spec.extra_page == 0 and spec.extra_y is not None, spec.extra_page)
+
+    # Homework 3 writes "Exercises" / "Book exercises:" instead of "#", and one
+    # line carries a note in nested parens before its colon
+    fake3 = Path(tmp) / "Homework 3.pdf"
+    d = pymupdf.open()
+    page = d.new_page()
+    for i, line in enumerate([
+        "Math 2321: Calculus 3, Fall 2026",
+        "Homework 3",
+        "§2.1 Exercises 1-3, 17",
+        "§2.4 Book exercises 19-20, 23",
+        "§2.5 Book exercises: 7, 8",
+        "§2.5 Book exercises (do only parts (a) through (d)): 21, 22",
+        "Additional problems:",
+        "(1) Let f(x, y) = x/y.",
+    ]):
+        page.insert_text((72, 100 + i * 20), line)
+    d.save(fake3)
+    d.close()
+
+    spec = pk.parse_homework(fake3, log)
+    check("'Exercises' and 'Book exercises:' lists parse too",
+          spec.book == {"2.1": [1, 2, 3, 17], "2.4": [19, 20, 23], "2.5": [7, 8, 21, 22]},
+          spec.book)
+    check("a note in parens sticks to the problems on its line only",
+          spec.notes.get(("2.5", 21)) == "do only parts (a) through (d)"
+          and ("2.5", 7) not in spec.notes, spec.notes)
+
+# wordings he hasn't used yet, so the next sheet doesn't need another fix
+refs = pk._section_refs("\n".join([
+    "The reference for this material comes from sections 1.4-1.6 of the book.",
+    "• Section 3.1 problems 4 and 7",
+    "• §3.2: 1-4, 9,",
+    "  11, 12",
+    "• Read §3.3 then do 5, 6",
+    "(13) §1.6, problem 17",
+    "(14) Let P = (4, 3, 2) and 5x - y + 2z = 7.",
+]))
+check("any wording around a § list parses, and section ranges are skipped",
+      [(s, n) for s, n, _ in refs]
+      == [("3.1", [4, 7]), ("3.2", [1, 2, 3, 4, 9, 11, 12]), ("3.3", [5, 6]), ("1.6", [17])],
+      refs)
+
 # The textbook is the one input the harness cannot synthesize; skip if absent.
 _cfg_path = Path(__file__).with_name("config.json")
 _book = ""
