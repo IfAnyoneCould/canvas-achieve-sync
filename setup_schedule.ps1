@@ -31,12 +31,15 @@ if ($Remove) {
 
 $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
 $pwshPath = if ($pwsh) { $pwsh.Source } else { (Get-Command powershell).Source }
-$scriptArgs = "-NoProfile -NonInteractive -WindowStyle Hidden -File `"$root\run.ps1`""
+# -WindowStyle Hidden still flashes a window (windows terminal ignores it) and
+# knocks games out of fullscreen. conhost --headless gives pwsh no window at all
+$conhost = "$env:SystemRoot\System32\conhost.exe"
+$scriptArgs = "--headless `"$pwshPath`" -NoProfile -NonInteractive -File `"$root\run.ps1`""
 
 # --- preferred path: full settings via the ScheduledTasks module -------------
 $registered = $false
 try {
-    $action = New-ScheduledTaskAction -Execute $pwshPath -Argument $scriptArgs -WorkingDirectory $root
+    $action = New-ScheduledTaskAction -Execute $conhost -Argument $scriptArgs -WorkingDirectory $root
 
     # One trigger at logon, one that repeats all day, so it stays fresh whether
     # the machine was rebooted or just left running.
@@ -70,7 +73,7 @@ catch {
 
 # --- fallback: schtasks.exe -------------------------------------------------
 if (-not $registered) {
-    $tr = "`"$pwshPath`" $scriptArgs"
+    $tr = "`"$conhost`" $scriptArgs"
     # /IT = run only when this user is logged on, which avoids needing to store
     # a password (a standard user cannot register a password-backed task).
     & schtasks.exe /Create /TN $taskName /TR $tr /SC HOURLY /MO $IntervalHours `

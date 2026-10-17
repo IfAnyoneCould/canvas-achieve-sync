@@ -89,6 +89,10 @@ user may use for their own tasks. That registers with `/IT`, so no password is
 stored, but the sync does not run at the login screen or while signed out. Run
 the script from an elevated shell to sync regardless of who is logged on.
 
+The task runs pwsh through `conhost.exe --headless`. `-WindowStyle Hidden` on
+its own still opens a window every run (Windows Terminal ignores it), which
+steals focus and knocks fullscreen games out.
+
 ## Achieve (enabled)
 
 Achieve has no public API and no calendar export, but its front-end talks to a

@@ -60,7 +60,8 @@ if ($Register) {
     $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
     $pwshPath = if ($pwsh) { $pwsh.Source } else { (Get-Command powershell).Source }
     # Not -NonInteractive: the balloon needs the interactive session to appear in.
-    $tr = "`"$pwshPath`" -NoProfile -WindowStyle Hidden -File `"$root\check_sync.ps1`""
+    # conhost --headless so no window pops up, see setup_schedule.ps1
+    $tr = "`"$env:SystemRoot\System32\conhost.exe`" --headless `"$pwshPath`" -NoProfile -File `"$root\check_sync.ps1`""
     & schtasks.exe /Create /TN $taskName /TR $tr /SC DAILY /ST 09:30 /IT /F | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "schtasks.exe failed with exit code $LASTEXITCODE." }
     Write-Output "Registered '$taskName': daily at 09:30."
